@@ -5,7 +5,7 @@
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
-  "description": "Private offline-first daily planner and expense tracker.",
+  "description": "Private offline-first daily planner, expenses and insights.",
   "icons": [
     {
       "src": "icon-192.png",

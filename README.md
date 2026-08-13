@@ -1,21 +1,13 @@
-# My Day PWA
+# My Day V4
 
-This is the installable Progressive Web App version of My Day.
-
-Features:
+Updated personal PWA with:
 - Today dashboard
-- Spent today
-- Left today
+- Planner
+- Expense tracking/history
 - Monthly remaining balance
-- Monthly budget
-- Daily planner
-- Expense tracking
-- Local/offline storage
-- CSV export and JSON backup
-- No bank/UPI connection
+- Insights panel with monthly totals, remaining budget, transaction count, average expense, category visualization and recent spending
+- Offline-first PWA shell
 
-## Install on Android
-Host these files at an HTTPS URL, open the URL in Chrome on Android, then use Chrome's Install app / Add to Home screen option.
+No personal data is included. Do not upload JSON backups or expense data to the public repository.
 
-## Android packaging
-PWABuilder can package a hosted PWA into a sideloadable Android package. The official documentation says PWABuilder supports side-loadable packages as well as store-ready packages.
+Note: true scheduled Android notifications require a native Android notification layer and are not claimed by this PWA build.

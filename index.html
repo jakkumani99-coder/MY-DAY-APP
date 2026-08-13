@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#ffffff"><meta name="description" content="Private personal daily planner and expense tracker"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-192.png"><title>My Day</title>
+<meta name="theme-color" content="#ffffff"><meta name="theme-color" content="#ffffff"><meta name="description" content="Private personal daily planner and expense tracker"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-192.png"><title>My Day</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#f5f5f5;color:#202020;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
 .app{max-width:480px;margin:auto;min-height:100vh;background:#fff}.top{padding:22px 18px 14px;border-bottom:1px solid #eee}
@@ -18,6 +18,12 @@ nav button{flex:1;background:#fff;color:#666;border-radius:0;padding:12px 3px;fo
 .view{display:none}.view.active{display:block}.modal{display:none;position:fixed;inset:0;background:#0006;align-items:flex-end;justify-content:center}.sheet{width:min(480px,100%);background:#fff;border-radius:18px 18px 0 0;padding:20px}
 input,select{width:100%;padding:12px;border:1px solid #ddd;border-radius:10px;margin:6px 0 12px;font:inherit}.row{display:flex;gap:8px}.row>*{flex:1}
 .empty{color:#888;padding:12px 0}
+</style><style>
+#myday-insights{display:none;margin:14px 0;padding:14px;border:1px solid #e8e8e8;border-radius:14px;background:#fff}
+.id-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.id-card{padding:12px;border-radius:12px;background:#f7f7f7}.id-label{font-size:12px;color:#777}.id-num{font-size:20px;font-weight:700;margin-top:4px}
+.id-title{font-size:18px;font-weight:700;margin:18px 0 8px}.id-row{display:grid;grid-template-columns:80px 1fr 75px;gap:8px;align-items:center;margin:9px 0;font-size:13px}.id-track{height:10px;background:#e9e9e9;border-radius:99px;overflow:hidden}.id-fill{height:100%;background:#222;border-radius:99px}
+.id-note{color:#777;font-size:13px}
 </style></head>
 <body><div class="app">
 <header class="top"><h1>Today</h1><div class="date" id="date"></div></header>
@@ -59,4 +65,51 @@ function taskHTML(t){return `<div class=item><input type=checkbox ${t.done?'chec
 function expHTML(e){return `<div class=item><div class=grow><b>${e.category}</b><div class=muted>${e.date} · ${e.note||'No note'}</div></div><span class=amount>${money(e.amount)}</span><button class="light" onclick="removeExpense(${e.id})">×</button></div>`}
 function render(){let ds=d.expenses.filter(e=>e.date===today()),sp=ds.reduce((s,e)=>s+e.amount,0),daily=d.budget/30;spent.textContent=money(sp);left.textContent=money(Math.max(0,daily-sp));budget.textContent=money(d.budget);let m=d.expenses.filter(e=>e.date.startsWith(today().slice(0,7))),mt=m.reduce((s,e)=>s+e.amount,0);bar.style.width=(d.budget?Math.min(100,mt/d.budget*100):0)+'%';budgetInfo.textContent=money(mt)+' spent this month';taskCount.textContent=ds.length?'' : '';let ts=d.tasks.filter(t=>t.date===today());document.getElementById('todayTasks').innerHTML=ts.map(taskHTML).join('')||'<div class=empty>No tasks yet.</div>';expenseCount.textContent=ds.length?ds.length+' entries':'';document.getElementById('todayExpenses').innerHTML=ds.map(expHTML).join('')||'<div class=empty>No expenses today.</div>';document.getElementById('allTasks').innerHTML=d.tasks.slice().sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time)).map(t=>`<div class=item><input type=checkbox ${t.done?'checked':''} onclick="toggleTask(${t.id})"><div class=grow><b class="${t.done?'done':''}">${t.name}</b><div class=muted>${t.date} · ${t.time||'No time'} · ${t.priority}</div></div></div>`).join('')||'<div class=empty>No tasks.</div>';monthTotal.textContent=money(mt);monthLeft.textContent=money(Math.max(0,d.budget-mt));allExpenses.innerHTML=d.expenses.slice().reverse().map(expHTML).join('')||'<div class=empty>No expenses.</div>';budgetInput.value=d.budget}
 render();
-</script><script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}</script></body></html>
+</script><script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}</script><div id="myday-insights">
+<div class="id-grid">
+<div class="id-card"><div class="id-label">Monthly spent</div><div class="id-num" id="id-total">₹0</div></div>
+<div class="id-card"><div class="id-label">Monthly remaining</div><div class="id-num" id="id-remaining">₹0</div></div>
+<div class="id-card"><div class="id-label">Transactions</div><div class="id-num" id="id-count">0</div></div>
+<div class="id-card"><div class="id-label">Average expense</div><div class="id-num" id="id-average">₹0</div></div>
+</div>
+<div class="id-title">Spending by category</div>
+<div id="id-categories"></div>
+<div class="id-title">Recent spending</div>
+<div id="id-recent" class="id-note">No expenses yet.</div>
+</div><script>
+(function(){
+const INR=n=>'₹'+Math.round(Number(n)||0).toLocaleString('en-IN');
+function getExpenses(){
+  const out=[];
+  const keys=['expenses','myday_data','myDayData','my-day-data'];
+  for(const k of keys){
+    try{const v=localStorage.getItem(k); if(!v)continue; const o=JSON.parse(v);
+      if(Array.isArray(o)) return o;
+      if(o && Array.isArray(o.expenses)) return o.expenses;
+    }catch(e){}
+  }
+  return out;
+}
+function showInsights(){
+ const p=document.getElementById('myday-insights'); if(!p)return;
+ p.style.display=p.style.display==='none'?'block':'none';
+ if(p.style.display==='none')return;
+ const ex=getExpenses();
+ const now=new Date(), ym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+ const month=ex.filter(x=>String(x.date||x.createdAt||'').slice(0,7)===ym || !x.date);
+ let total=0,cats={};
+ month.forEach(x=>{const a=Number(x.amount||x.value||0)||0; total+=a; const c=x.category||'Other'; cats[c]=(cats[c]||0)+a;});
+ let budget=Number(localStorage.getItem('monthlyBudget')||30000);
+ document.getElementById('id-total').textContent=INR(total);
+ document.getElementById('id-remaining').textContent=INR(Math.max(0,budget-total));
+ document.getElementById('id-count').textContent=month.length;
+ document.getElementById('id-average').textContent=INR(month.length?total/month.length:0);
+ const vals=Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+ const max=Math.max(1,...vals.map(x=>x[1]));
+ document.getElementById('id-categories').innerHTML=vals.length?vals.map(([c,v])=>
+ `<div class="id-row"><div>${c}</div><div class="id-track"><div class="id-fill" style="width:${Math.max(3,Math.round(v/max*100))}%"></div></div><div>${INR(v)}</div></div>`).join(''):'<div class="id-note">No expenses yet. Add expenses to see your insights.</div>';
+ document.getElementById('id-recent').textContent=month.length?month.slice(-5).reverse().map(x=>`${x.category||'Other'} — ${INR(x.amount||x.value)}`).join(' • '):'No expenses yet.';
+}
+window.showMyDayInsights=showInsights;
+})();
+</script><button type="button" onclick="showMyDayInsights()" style="margin:10px 16px;padding:12px 16px;border:1px solid #ddd;border-radius:12px;background:#fff;font-weight:600">📊 Insights</button></body></html>
